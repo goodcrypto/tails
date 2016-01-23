@@ -256,15 +256,6 @@ When /^I destroy the computer$/ do
   $vm.destroy_and_undefine
 end
 
-def bootsplash
-  case @os_loader
-  when "UEFI"
-    'TailsBootSplashUEFI.png'
-  else
-    'TailsBootSplash.png'
-  end
-end
-
 def bootsplash_tab_msg
   case @os_loader
   when "UEFI"
@@ -274,17 +265,32 @@ def bootsplash_tab_msg
   end
 end
 
-Given /^the computer (re)?boots Tails$/ do |reboot|
-
+Given /^Tails is at the boot menu( after rebooting)?$/ do |reboot|
   boot_timeout = 30
   # We need some extra time for memory wiping if rebooting
-  boot_timeout += 90 if reboot
+  if reboot
+    nr_gibs_of_ram = convert_from_bytes($vm.get_ram_size_in_bytes, 'GiB').ceil
+    boot_timeout += nr_gibs_of_ram*5*60
+  end
+  # Previously we simply looked for the boot splash, but sometime it
+  # has been missed. Hopefully spamming TAB, which will halt the boot
+  # process by showing the prompt for the kernel cmdline, will make
+  # this a bit more robust.
+  try_for(boot_timeout) do
+    @screen.type(Sikuli::Key.TAB)
+    @screen.find('TailsBootMenuKernelCmdline.png')
+    @screen.waitVanish(bootsplash_tab_msg(), 1)
+    true
+  end
+  # Ensure that we're back at the boot splash
+  @screen.type(Sikuli::Key.ESC)
+  @screen.wait(bootsplash_tab_msg(), 5)
+end
 
-  @screen.wait(bootsplash, boot_timeout)
-  @screen.wait(bootsplash_tab_msg, 10)
+Given /^the computer (re)?boots Tails$/ do |reboot|
+  step 'Tails is at the boot menu' + (reboot ? '' : ' after rebooting')
   @screen.type(Sikuli::Key.TAB)
-  @screen.waitVanish(bootsplash_tab_msg, 1)
-
+  @screen.waitVanish(bootsplash_tab_msg(), 1)
   @screen.type(" autotest_never_use_this_option blacklist=psmouse #{@boot_options}" +
                Sikuli::Key.ENTER)
   @screen.wait('TailsGreeter.png', 30*60)
@@ -506,8 +512,7 @@ Then /^Tails eventually shuts down$/ do
 end
 
 Then /^Tails eventually restarts$/ do
-  nr_gibs_of_ram = convert_from_bytes($vm.get_ram_size_in_bytes, 'GiB').ceil
-  @screen.wait('TailsBootSplash.png', nr_gibs_of_ram*5*60)
+  step 'Tails is at the boot menu after rebooting'
 end
 
 Given /^I shutdown Tails and wait for the computer to power off$/ do
