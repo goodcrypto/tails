@@ -202,7 +202,8 @@ end
 When /^I stop the boot at the bootloader menu$/ do
   step 'Tails is at the boot menu after rebooting'
   @screen.type(Sikuli::Key.TAB)
-  @screen.waitVanish(bootsplash_tab_msg, 1)
+  @screen.find('TailsBootMenuKernelCmdline.png')
+  @screen.waitVanish(bootsplash_tab_msg(), 1)
 end
 
 When /^I shutdown and wait for Tails to finish wiping the memory$/ do
