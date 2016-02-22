@@ -200,8 +200,7 @@ When /^I reboot without wiping the memory$/ do
 end
 
 When /^I stop the boot at the bootloader menu$/ do
-  @screen.wait(bootsplash, 90)
-  @screen.wait(bootsplash_tab_msg, 10)
+  step 'Tails is at the boot menu after rebooting'
   @screen.type(Sikuli::Key.TAB)
   @screen.waitVanish(bootsplash_tab_msg, 1)
 end
