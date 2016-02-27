@@ -288,7 +288,7 @@ Given /^Tails is at the boot menu( after rebooting)?$/ do |reboot|
 end
 
 Given /^the computer (re)?boots Tails$/ do |reboot|
-  step 'Tails is at the boot menu' + (reboot ? '' : ' after rebooting')
+  step 'Tails is at the boot menu' + (reboot ? ' after rebooting' : '')
   @screen.type(Sikuli::Key.TAB)
   @screen.waitVanish(bootsplash_tab_msg(), 1)
   @screen.type(" autotest_never_use_this_option blacklist=psmouse #{@boot_options}" +
