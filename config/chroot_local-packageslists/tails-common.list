@@ -200,6 +200,7 @@ pulseaudio
 pulseaudio-utils
 pwgen
 p7zip-full
+rng-tools
 rfkill
 sane-utils
 scdaemon
