@@ -62,11 +62,8 @@ def exec_firefox(*args):
         Execute firefox.
 
         >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
-        >>> exec_firefox('-allow-remote', '--class', 'Tor Browser', '-profile', PROFILE)
+        >>> exec_firefox(['-allow-remote', '--class', 'Tor Browser', '-profile', PROFILE])
     """
-    if isinstance(args, tuple):
-        args = args[0]
-
     exec_firefox_helper('firefox', *args)
 
 def exec_unconfined_firefox(*args):
@@ -74,12 +71,9 @@ def exec_unconfined_firefox(*args):
         Execute firefox unconfined.
 
         >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
-        >>> exec_unconfined_firefox('-app', os.path.join(TOR_LAUNCHER_INSTALL,
-        ...                         'application.ini'), '-profile', PROFILE)
+        >>> exec_unconfined_firefox(['-app', os.path.join(TOR_LAUNCHER_INSTALL,
+        ...                         'application.ini'), '-profile', PROFILE])
     """
-    if isinstance(args, tuple):
-        args = args[0]
-
     exec_firefox_helper('firefox-unconfined', *args)
 
 def exec_firefox_helper(binary, *args):
@@ -87,11 +81,13 @@ def exec_firefox_helper(binary, *args):
         Execute the firefox helper.
 
         >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
-        >>> exec_firefox_helper('firefox', '-allow-remote', '--class', 'Tor Browser',
-        ...                     '-profile', PROFILE)
+        >>> exec_firefox_helper('firefox', ['-allow-remote', '--class', 'Tor Browser',
+        ...                     '-profile', PROFILE])
     """
-    if isinstance(args, tuple):
-        args = args[0]
+    if isinstance(args, tuple) and len(args) > 0:
+        arg0 = args[0]
+        if isinstance(arg0, list):
+            args = arg0
 
     os.environ['LD_LIBRARY_PATH'] = TBB_INSTALL
     os.environ['FONTCONFIG_PATH'] = os.path.join(TBB_INSTALL, 'TorBrowser/Data/fontconfig')
