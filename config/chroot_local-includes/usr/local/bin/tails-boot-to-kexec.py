@@ -1,64 +1,60 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 '''
     Boot to kexec.
 
-    Conversion from bash to python by goodcrypto.com
+    Test with "python3 tails-boot-to-kexec.py doctest".
+
+    goodcrypto.com converted from bash to python and added basic tests.
 '''
-
-from __future__ import print_function
-
 import os
 import re
 import sys
 
 import sh
 
-def main(*args):
+def main(args):
     """ Boot to kexec
 
-        >>> main('kernel')
+        >>> main(['tails-boot-to-kexec', 'kernel', '/vmlinuz'])
+        /vmlinuz
+        >>> main(['tails-boot-to-kexec', 'initrd', '/vmlinuz'])
+        /vmlinuz
+        >>> try:
+        ...     main(['tails-boot-to-kexec', 'test', '/vmlinuz'])
+        ...     fail()
+        ... except SystemExit:
+        ...     pass
     """
+    subsystem = args[1]
+    if subsystem == 'kernel' or subsystem == 'initrd':
+        path = args[2]
 
-    print('Boot to kexec')
-
-    try:
-        subsystem = sys.argv[1]
-
-        # possibly refactor. kernel and initrd are handled identically except for regex
-        if subsystem == 'kernel':
-            boot_kernel = sys.argv[2]
-            if running_amd64_kernel():
-                print(re.sub(r'/vmlinuz$', '/vmlinuz2', boot_kernel))
-            else:
-                print(boot_kernel)
-
-        elif subsystem == 'initrd':
-            boot_initrd = sys.argv[2]
-            if running_amd64_kernel():
-                print(re.sub(r'/initrd.img$', '/initrd2.img', boot_initrd))
-            else:
-                print(boot_initrd)
-
+        if running_amd64_kernel():
+            if subsystem == 'kernel':
+                print(re.sub(r'/vmlinuz$', '/vmlinuz2', path))
+            elif subsystem == 'initrd':
+                print(re.sub(r'/initrd.img$', '/initrd2.img', path))
         else:
-            script_name = os.path.basename(sys.argv[0])
-            print('Usage: {} kernel|initrd PATH'.format(script_name), file=sys.stderr)
-            sys.exit(3)
-
-    except sh.ErrorReturnCode as error:
-        if error.stderr:
-            print(error.stderr, file=sys.stderr)
-        sys.exit(-1)
+            print(path)
+    else:
+        script_name = os.path.basename(args[0])
+        print('Usage: {} kernel|initrd PATH'.format(script_name), file=sys.stderr)
+        sys.exit(3)
 
 def running_amd64_kernel():
     """
         Return True if 64 bit, else False.
 
         >>> running_amd64_kernel()
-        True
+        False
     """
-
-    kernel_release_name = str(sh.uname('--kernel-release').stdout)
-    return 'amd64' in kernel_release_name
+    try:
+        kernel_release_name = sh.uname('--kernel-release').stdout.decode()
+        return 'amd64' in kernel_release_name
+    except sh.ErrorReturnCode as error:
+        if error.stderr:
+            print(error.stderr, file=sys.stderr)
+        sys.exit(-1)
 
 if __name__ == '__main__':
     if sys.argv and len(sys.argv) > 1:
@@ -66,9 +62,9 @@ if __name__ == '__main__':
             from doctest import testmod
             testmod()
         else:
-            main(sys.argv[1:])
+            main(sys.argv)
+        sys.exit(0)
     else:
-        main([])
-
-    sys.exit(0)
+        print('Usage: tails-boot-to-kexec kernel|initrd PATH')
+        sys.exit(-1)
 
