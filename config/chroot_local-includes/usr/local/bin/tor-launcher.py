@@ -1,11 +1,11 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 """
     Set up the environment and then launch Tor.
 
-    Conversion from bash to python by goodcrypto.com
-"""
-from __future__ import print_function
+    Test with "python3 tor-launcher.py doctest".
 
+    goodcrypto.com converted from bash to python and added basic tests.
+"""
 import os
 import sys
 
@@ -17,7 +17,7 @@ from tailslib.tor_browser import (config_best_tor_launcher_locale,
 # sanitize PATH before executing any other code
 os.environ['PATH'] = '/usr/local/bin:/usr/bin:/bin'
 
-def main(*args):
+def main(args):
     """
         >>> main([])
     """
@@ -35,19 +35,28 @@ def main(*args):
 
     if not os.path.exists(profile):
         os.makedirs(profile)
+
     config_best_tor_launcher_locale(profile)
 
-    exec_unconfined_firefox('-app',
-                            os.path.join(TOR_LAUNCHER_INSTALL, 'application.ini'),
-                            '-profile', profile, *args)
+    full_args = ['-app', os.path.join(TOR_LAUNCHER_INSTALL, 'application.ini'), '-profile', profile]
+    if len(args) > 0:
+        full_args = full_args + list(args)
 
+    exec_unconfined_firefox(full_args)
+
+'''
+    >>> # run script
+    >>> this_command = sh.Command(sys.argv[0])
+    >>> this_command()
+    <BLANKLINE>
+'''
 if __name__ == '__main__':
     if sys.argv and len(sys.argv) > 1:
         if sys.argv[1] == 'doctest':
             from doctest import testmod
             testmod()
         else:
-            main(sys.argv[1:])
+            main(sys.argv)
     else:
         main([])
 
