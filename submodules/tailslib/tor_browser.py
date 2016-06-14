@@ -1,14 +1,15 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 """
     Helper functions for the Tor browser.
 
-    Conversion from bash to python by goodcrypto.com
+    goodcrypto.com converted from bash to python and added basic tests.
 """
-from __future__ import print_function
-
 import os
 import re
 import sh
+
+# sanitize PATH before executing any other code
+os.environ['PATH'] = '/usr/local/bin:/usr/bin:/bin'
 
 TBB_INSTALL = '/usr/local/lib/tor-browser'
 TBB_PROFILE = '/etc/tor-browser/profile'
@@ -16,26 +17,69 @@ TBB_EXT = '/usr/local/share/tor-browser-extensions'
 TOR_LAUNCHER_INSTALL = '/usr/local/lib/tor-launcher-standalone'
 TOR_LAUNCHER_LOCALES_DIR = os.path.join(TOR_LAUNCHER_INSTALL, 'chrome/locale')
 
-# sanitize PATH before executing any other code
-os.environ['PATH'] = '/usr/local/bin:/usr/bin:/bin'
+def set_mozilla_pref(filename, name, value, prefix='pref'):
+    """
+        Set mozilla preference.
+
+        For strings it's up to the caller to add
+        double-quotes ("") around the value.
+
+        Sometimes we might want prefix to be e.g. user_pref
+
+        >>> POP = 0
+        >>> IMAP = 1
+        >>> HOME_DIR = os.environ['HOME']
+        >>> ICEDOVE_CONFIG_DIR = os.path.join(HOME_DIR, '.icedove')
+        >>> PROFILE = os.path.join(ICEDOVE_CONFIG_DIR, 'profile.default')
+        >>> TAILS_JS = os.path.join(PROFILE, 'preferences', '0000tails.js')
+        >>> lines = set_mozilla_pref(TAILS_JS, "extensions.torbirdy.defaultprotocol", POP)
+        >>> len(lines) > 0
+        True
+        >>> lines = set_mozilla_pref(TAILS_JS, "extensions.torbirdy.defaultprotocol", IMAP)
+        >>> len(lines) > 0
+        True
+    """
+
+    new_lines = []
+    named_prefix = '{prefix}("{name}"'.format(prefix=prefix, name=name)
+
+    # delete old lines for this setting
+    for line in open(filename):
+        if not line.startswith(named_prefix):
+            new_lines.append(line)
+
+    # add the new setting
+    new_lines.append('{prefix}("{name}", {value});\n'.format(prefix=prefix, name=name, value=value))
+    with open(filename, 'w') as f:
+        for line in new_lines:
+            f.write(line)
+
+    # returned for doctest
+    return new_lines
 
 def exec_firefox(*args):
     """
-        Execute the firefox.
+        Execute firefox.
 
         >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
         >>> exec_firefox('-allow-remote', '--class', 'Tor Browser', '-profile', PROFILE)
     """
+    if isinstance(args, tuple):
+        args = args[0]
+
     exec_firefox_helper('firefox', *args)
 
 def exec_unconfined_firefox(*args):
     """
-        Execute the firefox unconfined.
+        Execute firefox unconfined.
 
         >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
         >>> exec_unconfined_firefox('-app', os.path.join(TOR_LAUNCHER_INSTALL,
         ...                         'application.ini'), '-profile', PROFILE)
     """
+    if isinstance(args, tuple):
+        args = args[0]
+
     exec_firefox_helper('firefox-unconfined', *args)
 
 def exec_firefox_helper(binary, *args):
@@ -46,6 +90,9 @@ def exec_firefox_helper(binary, *args):
         >>> exec_firefox_helper('firefox', '-allow-remote', '--class', 'Tor Browser',
         ...                     '-profile', PROFILE)
     """
+    if isinstance(args, tuple):
+        args = args[0]
+
     os.environ['LD_LIBRARY_PATH'] = TBB_INSTALL
     os.environ['FONTCONFIG_PATH'] = os.path.join(TBB_INSTALL, 'TorBrowser/Data/fontconfig')
     os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
@@ -65,9 +112,9 @@ def exec_firefox_helper(binary, *args):
 
     process_id = os.spawnve(os.P_NOWAIT, binary_path, full_args, os.environ)
     if process_id == 127:
-        raise 'Invalid keys or values in environment so unable to start {}'.format(binary)
+        raise 'Invalid keys or values in environment so unable to start: {}'.format(binary)
     elif process_id == 0:
-        raise 'Unable to start {}'.format(binary)
+        raise 'Unable to start: {}'.format(binary)
 
 def guess_best_tor_browser_locale():
     """
