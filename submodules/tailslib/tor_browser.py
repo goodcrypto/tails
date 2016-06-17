@@ -2,10 +2,17 @@
 """
     Helper functions for the Tor browser.
 
+    Test with "python3 tor_browser.py doctest".
+    The tests will start the tor-browser so you probably
+    want to use a tester that handles user interaction or
+    run the tests from the command line and answer prompts as needed.
+
     goodcrypto.com converted from bash to python and added basic tests.
 """
 import os
 import re
+import sys
+
 import sh
 
 # sanitize PATH before executing any other code
@@ -16,6 +23,73 @@ TBB_PROFILE = '/etc/tor-browser/profile'
 TBB_EXT = '/usr/local/share/tor-browser-extensions'
 TOR_LAUNCHER_INSTALL = '/usr/local/lib/tor-launcher-standalone'
 TOR_LAUNCHER_LOCALES_DIR = os.path.join(TOR_LAUNCHER_INSTALL, 'chrome/locale')
+
+def main(*args):
+    """
+        Start browser.
+
+        >>> DISPLAY = os.environ['DISPLAY']
+        >>> PROFILE = '/home/amnesia/.tor-browser/profile.default'
+        >>> args = ['-DISPLAY={}'.format(DISPLAY), '-profile', PROFILE]
+        >>> main(args)
+    """
+    exec_firefox(*args)
+
+def exec_firefox(*args):
+    """
+        Execute firefox.
+
+        >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
+        >>> exec_firefox(['-allow-remote', '--class', 'Tor Browser', '-profile', PROFILE])
+    """
+    exec_firefox_helper('firefox', *args)
+
+def exec_unconfined_firefox(*args):
+    """
+        Execute firefox unconfined.
+
+        >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
+        >>> exec_unconfined_firefox(['-app', os.path.join(TOR_LAUNCHER_INSTALL,
+        ...                         'application.ini'), '-profile', PROFILE])
+    """
+    exec_firefox_helper('firefox-unconfined', *args)
+
+def exec_firefox_helper(binary, *args):
+    """
+        Execute the firefox helper.
+
+        >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
+        >>> exec_firefox_helper('firefox', ['-allow-remote', '--class', 'Tor Browser',
+        ...                     '-profile', PROFILE])
+    """
+    # handle some tests which pass tuples instead of lists
+    if isinstance(args, tuple) and len(args) > 0:
+        arg0 = args[0]
+        if isinstance(arg0, list):
+            args = arg0
+
+    os.environ['LD_LIBRARY_PATH'] = TBB_INSTALL
+    os.environ['FONTCONFIG_PATH'] = os.path.join(TBB_INSTALL, 'TorBrowser/Data/fontconfig')
+    os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
+
+    os.unsetenv('SESSION_MANAGER')
+
+    # The Tor Browser often assumes that the current directory is
+    # where the browser lives, e.g. for the fixed set of fonts set by
+    # fontconfig above.
+    os.chdir(TBB_INSTALL)
+
+    # From start-tor-browser:
+    binary_path = os.path.join(TBB_INSTALL, binary)
+    full_args = [binary_path]
+    if len(args) > 0:
+        full_args = full_args + list(args)
+
+    process_id = os.spawnve(os.P_NOWAIT, binary_path, full_args, os.environ)
+    if process_id == 127:
+        raise 'Invalid keys or values in environment so unable to start: {}'.format(binary)
+    elif process_id == 0:
+        raise 'Unable to start: {}'.format(binary)
 
 def set_mozilla_pref(filename, name, value, prefix='pref'):
     """
@@ -56,61 +130,6 @@ def set_mozilla_pref(filename, name, value, prefix='pref'):
 
     # returned for doctest
     return new_lines
-
-def exec_firefox(*args):
-    """
-        Execute firefox.
-
-        >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
-        >>> exec_firefox(['-allow-remote', '--class', 'Tor Browser', '-profile', PROFILE])
-    """
-    exec_firefox_helper('firefox', *args)
-
-def exec_unconfined_firefox(*args):
-    """
-        Execute firefox unconfined.
-
-        >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
-        >>> exec_unconfined_firefox(['-app', os.path.join(TOR_LAUNCHER_INSTALL,
-        ...                         'application.ini'), '-profile', PROFILE])
-    """
-    exec_firefox_helper('firefox-unconfined', *args)
-
-def exec_firefox_helper(binary, *args):
-    """
-        Execute the firefox helper.
-
-        >>> PROFILE = '{}/.tor-browser/profile.default'.format(os.environ['HOME'])
-        >>> exec_firefox_helper('firefox', ['-allow-remote', '--class', 'Tor Browser',
-        ...                     '-profile', PROFILE])
-    """
-    if isinstance(args, tuple) and len(args) > 0:
-        arg0 = args[0]
-        if isinstance(arg0, list):
-            args = arg0
-
-    os.environ['LD_LIBRARY_PATH'] = TBB_INSTALL
-    os.environ['FONTCONFIG_PATH'] = os.path.join(TBB_INSTALL, 'TorBrowser/Data/fontconfig')
-    os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
-
-    os.unsetenv('SESSION_MANAGER')
-
-    # The Tor Browser often assumes that the current directory is
-    # where the browser lives, e.g. for the fixed set of fonts set by
-    # fontconfig above.
-    os.chdir(TBB_INSTALL)
-
-    # From start-tor-browser:
-    binary_path = os.path.join(TBB_INSTALL, binary)
-    full_args = [binary_path]
-    if len(args) > 0:
-        full_args = full_args + list(args)
-
-    process_id = os.spawnve(os.P_NOWAIT, binary_path, full_args, os.environ)
-    if process_id == 127:
-        raise 'Invalid keys or values in environment so unable to start: {}'.format(binary)
-    elif process_id == 0:
-        raise 'Unable to start: {}'.format(binary)
 
 def guess_best_tor_browser_locale():
     """
@@ -258,9 +277,21 @@ def get_short_locale(long_locale):
     parts = long_locale.split('-')
     return parts[0]
 
-if __name__ == '__main__':
-    # pylint wants this imported at the top, but
-    # it's only used for testing so we want to minimize imports
-    from doctest import testmod
-    testmod()
+'''
+    >>> # run script
+    >>> this_command = sh.Command(sys.argv[0])
+    >>> this_command()
+    <BLANKLINE>
+'''
+if __name__ == "__main__":
+    if sys.argv and len(sys.argv) > 1:
+        if sys.argv[1] == 'doctest':
+            from doctest import testmod
+            testmod()
+        else:
+            main(sys.argv)
+    else:
+        main()
+
+    sys.exit(0)
 
