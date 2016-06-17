@@ -2,6 +2,8 @@
 '''
     Log messages.
 
+    Test with "python3 log.py".
+
     goodcrypto.com converted from bash to python and added basic tests.
 '''
 import sys
