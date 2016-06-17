@@ -2,6 +2,8 @@
 '''
     Export gnome environment.
 
+    Test with "python3 gnome.py".
+
     goodcrypto.com converted from bash to python and added basic tests.
 '''
 import os
@@ -37,7 +39,8 @@ def export_gnome_env():
 
     # export the gnome environment variables
     variables = "(DBUS_SESSION_BUS_ADDRESS|DISPLAY|XAUTHORITY)"
-    grep_result = sh.grep('-E', r'^{vars}='.format(vars=variables), _in='\n'.join(env_lines))
+    grep_result = sh.grep('-E', r'^{vars}='.format(vars=variables),
+       _in='\n'.join(env_lines), _ok_code=[0, 1, 2])
     for line in grep_result.stdout.decode().split('\n'):
         attr, __, value = line.partition('=')
         os.environ[attr.strip()] = value.strip()
