@@ -143,7 +143,7 @@ def start_icedove(*args):
 
     # Give Icedove its own temp directory, similar rationale to a1fd1f0f & #9558.
     tmpdir = os.path.join(PROFILE, 'tmp')
-    os.makedirs(tmpdir, mode=0700)
+    os.makedirs(tmpdir, mode=0o700)
     os.environ['TMPDIR'] = tmpdir
 
     try:
