@@ -3,6 +3,9 @@
     Set up the environment and then start IceDove.
 
     Test with "python3 icedove.py doctest".
+    The tests will start the tor-browser so you probably
+    want to use a tester that handles user interaction or
+    run the tests from the command line and answer prompts as needed.
 
     goodcrypto.com converted from bash to python and added basic tests.
 '''
@@ -140,7 +143,7 @@ def start_icedove(*args):
 
     # Give Icedove its own temp directory, similar rationale to a1fd1f0f & #9558.
     tmpdir = os.path.join(PROFILE, 'tmp')
-    sh.mkdir('--mode=0700', '--parents', tmpdir)
+    os.makedirs(tmpdir, mode=0700)
     os.environ['TMPDIR'] = tmpdir
 
     try:
