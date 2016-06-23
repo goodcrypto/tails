@@ -85,11 +85,9 @@ def exec_firefox_helper(binary, *args):
     if len(args) > 0:
         full_args = full_args + list(args)
 
-    process_id = os.spawnve(os.P_NOWAIT, binary_path, full_args, os.environ)
+    process_id = os.spawnve(os.P_WAIT, binary_path, full_args, os.environ)
     if process_id == 127:
         raise 'Invalid keys or values in environment so unable to start: {}'.format(binary)
-    elif process_id == 0:
-        raise 'Unable to start: {}'.format(binary)
 
 def set_mozilla_pref(filename, name, value, prefix='pref'):
     """
@@ -289,7 +287,7 @@ if __name__ == "__main__":
             from doctest import testmod
             testmod()
         else:
-            main(sys.argv)
+            main(sys.argv[1:])
     else:
         main()
 
