@@ -108,6 +108,3 @@ if __name__ == "__main__":
             main(sys.argv)
     else:
         main()
-
-    sys.exit(0)
-
