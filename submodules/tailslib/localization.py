@@ -9,6 +9,9 @@
 import os
 import re
 
+from tailslib.common import is_readable
+
+
 def language_code_from_locale(lang='en'):
     """
         Extracts the language part of a given locale, e.g. "en_US.UTF-8"
@@ -39,12 +42,9 @@ def localized_tails_doc_page(page):
         course!) or the ".html" extension. If a localized page doesn't exist
         the default is the English version.
 
-        >>> page = localized_tails_doc_page('tailsdoc')
-        >>> page is None
-        True
+        >>> localized_tails_doc_page('/usr/share/doc/tails/website/misc/unsafe_browser_warning')
+        '/usr/share/doc/tails/website/misc/unsafe_browser_warning.en.html'
     """
-    page = None
-
     if 'LANG' in os.environ:
         lang_code = language_code_from_locale(lang=os.environ['LANG'])
     else:
@@ -52,8 +52,9 @@ def localized_tails_doc_page(page):
 
     for locale in [lang_code, 'en']:
         try_page = '{page}.{locale}.html'.format(page=page, locale=locale)
-        if os.path.isfile(try_page):
+        if is_readable(try_page):
             page = try_page
+            break
 
     return page
 
