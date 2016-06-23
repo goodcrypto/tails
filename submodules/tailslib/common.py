@@ -7,9 +7,14 @@
     goodcrypto.com converted from bash to python and added basic tests.
 '''
 import os
+import stat
 from time import sleep
 
 import sh
+
+# sanitize PATH before executing any other code
+os.environ['PATH'] = '/usr/local/bin:/usr/bin:/bin'
+
 
 def clock_gettime_monotonic():
     """
@@ -28,35 +33,68 @@ def clock_gettime_monotonic():
 
     return int(results.stdout.decode().strip())
 
-def wait_until(timeout, check_exp, delay=1):
+def wait_until(timeout, args, delay=1):
     """
-        Run `check_expr` until `timeout` seconds has passed, and sleep
+        Run the first element of args until `timeout` seconds has passed, and sleep
         `delay` (optional, defaults to 1) seconds in between the calls.
+
         Note that execution isn't aborted exactly after `timeout`
         seconds. In the worst case (the timeout happens right after we check
         if the timeout has happened) we'll wait in total: `timeout` seconds +
         `delay` seconds + the time needed for `check_expr`.
+
+        >>> mnt = 'tmpfs'
+        >>> mnt_dir = '/tmp/amnesia'
+        >>> if not os.path.exists(mnt_dir):
+        ...     os.mkdir(mnt_dir)
+        >>> result = sh.mount('-t', mnt, mnt, mnt_dir)
+        >>> wait_until(10, args=['umount', mnt])
+        False
     """
     result = False
-    timeout_at = sh.expr(clock_gettime_monotonic() + timeout)
+    timeout_at = clock_gettime_monotonic() + timeout
 
-    elements = check_exp.split(' ')
-    run = sh.Command(elements[0])
-    while run(elements[1:]):
-        if clock_gettime_monotonic() >= timeout_at:
-            result = True
-            break
-        sleep(delay)
+    command = args[0]
+    if callable(command):
+        if len(args[1:]) > 0:
+            run_command = command(args[1:])
+        else:
+            run_command = command()
+
+        while run_command:
+            if clock_gettime_monotonic() >= timeout_at:
+                result = True
+                break
+            sleep(delay)
+    else:
+        full_path = sh.which(command)
+        try:
+            run = sh.Command(full_path)
+            while run(sh.glob(args[1:])):
+                if clock_gettime_monotonic() >= timeout_at:
+                    result = True
+                    break
+                sleep(delay)
+        except:
+            pass
 
     return result
 
-def try_for(timeout, check_exp):
+def try_for(timeout, args, delay=1):
     """
-        Just an alias. The second argument (wait_until()'s check_expr) is
+        Just an alias. The second argument (wait_until()'s first element of args) is
         the "try code block". Just like in `wait_until()`, the timeout isn't
         very accurate.
+
+        >>> mnt = 'tmpfs'
+        >>> mnt_dir = '/tmp/amnesia'
+        >>> if not os.path.exists(mnt_dir):
+        ...     os.mkdir(mnt_dir)
+        >>> result = sh.mount('-t', mnt, mnt, mnt_dir)
+        >>> try_for(10, args=['umount', mnt])
+        False
     """
-    return wait_until(timeout, check_exp)
+    return wait_until(timeout, args, delay=delay)
 
 def set_simple_config_key(filename, key, value, op='='):
     """
@@ -102,6 +140,35 @@ def set_simple_config_key(filename, key, value, op='='):
 
         if not updated_key:
             f.write('{key}{op}{value}\n'.format(key=key, op=op, value=value))
+
+def set_default_locale():
+    """
+        Set the default locale in the environment.
+
+        >>> set_default_locale()
+        >>> lang = os.environ['LANG']
+        >>> lang is not None
+        True
+    """
+    DEFAULT_LOCALE_FILE = '/etc/default/locale'
+
+    # Get default locale
+    with open(DEFAULT_LOCALE_FILE) as f:
+        lines = f.readlines()
+    for line in lines:
+        if line.startswith('LANG='):
+            __, __, lang = line.partition('=')
+            break
+    os.environ['LANG'] = lang.strip()
+
+def is_readable(path):
+    """
+        Return True if path exists and file is readable.
+
+        >>> is_readable('/etc/hosts')
+        True
+    """
+    return os.path.exists(path) and os.access(path, os.R_OK)
 
 def no_abort():
     """
